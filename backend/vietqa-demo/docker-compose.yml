@@ -1,0 +1,111 @@
+services:
+  vietnamese-embed:
+    build:
+      context: ./vietnamese-embedding
+      dockerfile: Dockerfile
+    container_name: vietnamese-embed
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    env_file:
+      - .env
+    environment:
+      - HUGGING_FACE_ACCESS_TOKEN=${HF_ACCESS_TOKEN}
+    ports:
+      - "8008:8080"
+    volumes:
+      - ./vietnamese-embedding/huggingface_cache:/root/.cache/huggingface
+      - ./vietnamese-embedding:/app
+    ipc: host
+    command: uvicorn main:app --reload --host 0.0.0.0 --port 8008
+    stdin_open: true
+    tty: true
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+    networks:
+      - mynetwork
+
+  streamlit:
+    build:
+      context: ./demo-chatbot
+      dockerfile: Dockerfile
+    command: [ "streamlit", "run", "streamlit_app.py", "--server.port=8501", "--server.address=0.0.0.0", "--server.fileWatcherType=none" ]
+    #command: bash
+    #command: python main.py
+    environment:
+      - STREAMLIT_SERVER_FILE_WATCHER_TYPE=none
+    stdin_open: true # Keep stdin open for interaction
+    tty: true
+    volumes:
+      - ./demo-chatbot/huggingface_cache:/root/.cache/huggingface
+      - ./demo-chatbot:/app
+    ports:
+      - "8501:8501"
+    networks:
+      - mynetwork
+    depends_on:
+      - vietnamese-embed
+
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    environment:
+      MINIO_ACCESS_KEY: admin1234
+      MINIO_SECRET_KEY: admin1234
+    ports:
+      - "9090:9000"
+      - "9091:9001"
+    volumes:
+      - ./minio/data:/data
+    command: server /data --console-address ":9091"
+    networks:
+      - mynetwork
+
+  pytesseract:
+    build:
+      context: ./ocr
+      dockerfile: Dockerfile
+    container_name: pytesseract
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./ocr:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - mynetwork
+
+  backend:
+    build:
+      context: ./demo_UI
+      dockerfile: Dockerfile
+    container_name: backend
+    stdin_open: true
+    environment:
+      - MONGO_URL=mongodb://mongodb:27017
+    ports:
+      - "912:912"
+    networks:
+      - mynetwork
+
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    volumes:
+      - mongodata:/data/db
+    ports:
+      - "26013:27017"
+    networks:
+      - mynetwork
+
+volumes:
+  mongodata:
+
+networks:
+  mynetwork:
+    driver: bridge
