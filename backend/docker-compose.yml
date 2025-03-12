@@ -12,12 +12,12 @@ services:
     environment:
       - HUGGING_FACE_ACCESS_TOKEN=${HF_ACCESS_TOKEN}
     ports:
-      - "8008:8080"
+      - "8080:8080"
     volumes:
       - ./vietnamese-embedding/huggingface_cache:/root/.cache/huggingface
       - ./vietnamese-embedding:/app
     ipc: host
-    command: uvicorn main:app --reload --host 0.0.0.0 --port 8008
+    command: uvicorn main:app --reload --host 0.0.0.0 --port 8080
     stdin_open: true
     tty: true
     deploy:
@@ -30,26 +30,26 @@ services:
     networks:
       - mynetwork
 
-  streamlit:
-    build:
-      context: ./demo-chatbot
-      dockerfile: Dockerfile
-    command: [ "streamlit", "run", "streamlit_app.py", "--server.port=8501", "--server.address=0.0.0.0", "--server.fileWatcherType=none" ]
-    #command: bash
-    #command: python main.py
-    environment:
-      - STREAMLIT_SERVER_FILE_WATCHER_TYPE=none
-    stdin_open: true # Keep stdin open for interaction
-    tty: true
-    volumes:
-      - ./demo-chatbot/huggingface_cache:/root/.cache/huggingface
-      - ./demo-chatbot:/app
-    ports:
-      - "8501:8501"
-    networks:
-      - mynetwork
-    depends_on:
-      - vietnamese-embed
+  # streamlit:
+  #   build:
+  #     context: ./streamlit_app
+  #     dockerfile: Dockerfile
+  #   command: [ "streamlit", "run", "streamlit_app.py", "--server.port=8501", "--server.address=0.0.0.0", "--server.fileWatcherType=none" ]
+  #   #command: bash
+  #   #command: python main.py
+  #   environment:
+  #     - STREAMLIT_SERVER_FILE_WATCHER_TYPE=none
+  #   stdin_open: true # Keep stdin open for interaction
+  #   tty: true
+  #   volumes:
+  #     - ./streamlit_app/huggingface_cache:/root/.cache/huggingface
+  #     - ./streamlit_app:/app
+  #   ports:
+  #     - "8501:8501"
+  #   networks:
+  #     - mynetwork
+  #   depends_on:
+  #     - vietnamese-embed
 
   minio:
     image: minio/minio:latest
@@ -58,11 +58,11 @@ services:
       MINIO_ACCESS_KEY: admin1234
       MINIO_SECRET_KEY: admin1234
     ports:
-      - "9090:9000"
-      - "9091:9001"
+      - "9000:9000"
+      - "9001:9001"
     volumes:
       - ./minio/data:/data
-    command: server /data --console-address ":9091"
+    command: server /data --console-address ":9001"
     networks:
       - mynetwork
 
@@ -82,12 +82,19 @@ services:
 
   backend:
     build:
-      context: ./demo_UI
+      context: ./core
       dockerfile: Dockerfile
     container_name: backend
     stdin_open: true
+    depends_on:
+      - mongodb
+      - minio
+      - pytesseract
     environment:
       - MONGO_URL=mongodb://mongodb:27017
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=admin1234
+      - MINIO_SECRET_KEY=admin1234
     ports:
       - "912:912"
     networks:
@@ -99,7 +106,7 @@ services:
     volumes:
       - mongodata:/data/db
     ports:
-      - "26013:27017"
+      - "27017:27017"
     networks:
       - mynetwork
 

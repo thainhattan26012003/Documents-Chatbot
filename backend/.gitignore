@@ -1,0 +1,8 @@
+.env
+minio/
+core/.env
+streamlit_app/.env
+streamlit_app/huggingface_cache
+vietnamese-embedding/__pycache__
+vietnamese-embedding/huggingface_cache
+ocr/__pycache__

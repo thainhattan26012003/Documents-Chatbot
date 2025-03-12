@@ -19,7 +19,7 @@ const PDFUploader = () => {
     }
   
     try {
-      const response = await fetch('http://ec2-54-86-234-1.compute-1.amazonaws.com:912/api/pdf/upload', {
+      const response = await fetch('http://localhost:912/api/pdf/upload', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`

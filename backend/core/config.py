@@ -13,7 +13,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 120
 MINIO_BUCKET = QDRANT_COLLECTION = "fpt"
 
 minio_client = Minio(
-    "minio:9000",
+    os.getenv("MINIO_ENDPOINT"),
     access_key=os.getenv("MINIO_ACCESS_KEY"),
     secret_key=os.getenv("MINIO_SECRET_KEY"),
     secure=False,

@@ -7,16 +7,16 @@ langchain_text_splitters
 pydantic
 openai==0.28
 python-multipart 
-streamlit
 python-dotenv   
 opencv-python-headless
 PyMuPDF==1.19.0
 opencv-python
 pdfplumber
-pytesseract
+# pytesseract
 minio
-langdetect
-psycopg2-binary
+# langdetect
+# psycopg2-binary
 bcrypt
 motor 
 python-jose[cryptography] 
+# gemini

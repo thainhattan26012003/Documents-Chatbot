@@ -8,7 +8,7 @@ const Chatbot = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('http://ec2-54-86-234-1.compute-1.amazonaws.com:912/api/chat/chat', {
+      const response = await fetch('http://localhost:912/api/chat/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

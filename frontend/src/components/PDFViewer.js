@@ -15,7 +15,7 @@ const PDFViewer = () => {
       setError("Missing token. Please login.");
       return;
     }
-    fetch('http://ec2-54-86-234-1.compute-1.amazonaws.com:912/api/pdf/pdf', {
+    fetch('http://localhost:912/api/pdf/pdf', {
       headers: { 'Authorization': `Bearer ${token}` },
     })
       .then((res) => {
@@ -48,7 +48,7 @@ const PDFViewer = () => {
   // Lazy loading: fetch trang hiện tại
   useEffect(() => {
     if (!selectedFile || !token) return;
-    fetch(`http://ec2-54-86-234-1.compute-1.amazonaws.com:912/api/pdf/pdf/view/${selectedFile}?page=${currentPage}&dpi=${dpi}`, {
+    fetch(`http://localhost:912/api/pdf/pdf/view/${selectedFile}?page=${currentPage}&dpi=${dpi}`, {
       headers: { 'Authorization': `Bearer ${token}` },
     })
       .then((res) => {
@@ -182,7 +182,7 @@ export default PDFViewer;
 //       setError("Missing token. Please login.");
 //       return;
 //     }
-//     fetch('http://ec2-54-86-234-1.compute-1.amazonaws.com:912/pdf', {
+//     fetch('http://localhost:912/pdf', {
 //       headers: { 'Authorization': `Bearer ${token}` },
 //     })
 //       .then((res) => {
@@ -215,7 +215,7 @@ export default PDFViewer;
 //   // Lazy loading: fetch trang hiện tại của file PDF đã chọn
 //   useEffect(() => {
 //     if (!selectedFile || !token) return;
-//     fetch(`http://ec2-54-86-234-1.compute-1.amazonaws.com:912/pdf/view/${selectedFile}?page=${currentPage}&dpi=${dpi}`, {
+//     fetch(`http://localhost:912/pdf/view/${selectedFile}?page=${currentPage}&dpi=${dpi}`, {
 //       headers: { 'Authorization': `Bearer ${token}` },
 //     })
 //       .then((res) => {
@@ -255,7 +255,7 @@ export default PDFViewer;
 //       const fakeFile = new File([blob], filename, { type: 'application/pdf' });
 //       const formData = new FormData();
 //       formData.append('file', fakeFile);
-//       const response = await fetch('http://ec2-54-86-234-1.compute-1.amazonaws.com:912/delete_files', {
+//       const response = await fetch('http://localhost:912/delete_files', {
 //         method: 'POST',
 //         headers: { 'Authorization': `Bearer ${token}` },
 //         body: formData,

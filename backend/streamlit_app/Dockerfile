@@ -12,6 +12,7 @@ WORKDIR /app
 
 COPY requirements.txt /app/requirements.txt
 
+RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
 # 1. Tải và cài đặt công cụ opencv-fixer
