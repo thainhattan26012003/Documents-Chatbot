@@ -28,10 +28,10 @@ const PDFUploader = () => {
       });
       if (response.ok) {
         const data = await response.json();
-        alert("Upload successful: " + JSON.stringify(data.results, null, 2));
+        // alert("Upload successful: ");
       } else {
         const err = await response.json();
-        alert('Upload failed: ' + err.detail);
+        // alert('Upload failed: ' + err.detail);
       }
     } catch (error) {
       alert('Error when uploading: ' + error.message);
