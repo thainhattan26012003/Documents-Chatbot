@@ -14,9 +14,7 @@ opencv-python
 pdfplumber
 # pytesseract
 minio
-# langdetect
-# psycopg2-binary
+psycopg2-binary
 bcrypt
 motor 
-python-jose[cryptography] 
-# gemini
+python-jose[cryptography]

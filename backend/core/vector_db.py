@@ -13,7 +13,7 @@ load_dotenv('.env')
 client = QdrantClient(url=os.getenv("QDRANT_URL"), api_key=os.getenv("QDRANT_API_KEY"), port=6333)
 
 # URL Vietnamese Embeddor (FastAPI)
-EMBEDDING_API_URL = "http://vietnamese-embed:8008/embed"
+EMBEDDING_API_URL = "http://vietnamese-embed:8080/embed"
 
 def embed(chunk):
     try:
@@ -25,13 +25,13 @@ def embed(chunk):
         print(f"? Error calling embedding API: {e}")
         return None
 
-DEFAULT_DISTANCE = "Cosine"
+DEFAULT_DISTANCE = "COSINE"
 
 class QdrantProvider:
     def __init__(self):
         # Initialize the QdrantProvider with a specific collection name
         test_embedidng = embed("test")
-        self.vector_size = len(test_embedidng) if test_embedidng else 0 
+        self.vector_size = len(test_embedidng) if test_embedidng else 768 
         self.distance = DEFAULT_DISTANCE
 
     def create_collection(self, collection_name: str):
@@ -45,7 +45,7 @@ class QdrantProvider:
             collection_name=collection_name,
             vectors_config=models.VectorParams(
                 size=self.vector_size,
-                distance=models.Distance[self.distance.upper()]
+                distance=models.Distance[self.distance.upper()] if self.distance.upper() in models.Distance.__members__ else models.Distance.COSINE
             )
         )
         print(f"Collection created `{collection_name}`")
