@@ -12,9 +12,11 @@ opencv-python-headless
 PyMuPDF==1.19.0
 opencv-python
 pdfplumber
-# pytesseract
+pytesseract
 minio
 psycopg2-binary
 bcrypt
 motor 
 python-jose[cryptography]
+pdf2image==1.16.0
+pillow==8.4.0

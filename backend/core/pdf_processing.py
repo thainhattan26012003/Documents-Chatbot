@@ -11,6 +11,9 @@ from minio.error import S3Error
 import pdfplumber
 from pdfminer.pdfparser import PDFSyntaxError
 import hashlib
+from PIL import Image
+import pytesseract
+from pytesseract import TesseractError
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from config import MINIO_BUCKET, IMAGE_MINIO_BUCKET, QDRANT_COLLECTION, minio_client, image_minio_client, vectordb_provider
 from fastapi import HTTPException, UploadFile
@@ -26,13 +29,6 @@ def normalize_filename(filename: str) -> str:
     ascii_str = ascii_str.replace(" ", "_")
     return re.sub(r"[^\w\-.]", "", ascii_str)
 
-def normalize_filename(filename: str) -> str:
-    base = os.path.basename(filename)
-    nfkd_form = unicodedata.normalize('NFKD', base)
-    ascii_str = nfkd_form.encode('ASCII', 'ignore').decode('ASCII')
-    ascii_str = ascii_str.replace(" ", "_")
-    return re.sub(r'[^\w\-.]', '', ascii_str)
-
 def rotate_image_by_angle(image, angle):
     (h, w) = image.shape[:2]
     (cX, cY) = (w // 2, h // 2)
@@ -44,6 +40,35 @@ def rotate_image_by_angle(image, angle):
     M[0, 2] += (nW / 2) - cX
     M[1, 2] += (nH / 2) - cY
     return cv.warpAffine(image, M, (nW, nH), flags=cv.INTER_CUBIC, borderMode=cv.BORDER_REPLICATE)
+
+def auto_rotate_image(image_array):
+    """
+    Dùng Tesseract OSD để phát hiện góc xoay (Rotate: 0,90,180,270)
+    rồi xoay ảnh về chiều dọc nếu cần.
+    """
+    # Chuyển từ OpenCV (BGR) sang PIL (RGB)
+    pil_image = Image.fromarray(cv.cvtColor(image_array, cv.COLOR_BGR2RGB))
+    try: 
+        # Gọi Tesseract OSD
+        osd_data = pytesseract.image_to_osd(pil_image, config="--dpi 300")
+    except TesseractError:
+        return image_array
+
+    # Tìm góc xoay trong chuỗi OSD (dòng "Rotate: X")
+    # Ví dụ "Rotate: 90"
+    match = re.search(r'Rotate: (\d+)', osd_data)
+    if not match:
+        return image_array  # Không tìm thấy -> trả về ảnh gốc
+
+    angle = int(match.group(1))
+
+    # Nếu góc = 0 hoặc 360 -> không cần xoay
+    if angle % 360 == 0:
+        return image_array
+
+    # Nếu góc = 90, 180, 270 -> xoay đúng số độ Tesseract báo
+    # (hàm rotate_image_by_angle đang -angle, nên ta gọi đúng angle)
+    return rotate_image_by_angle(image_array, angle)
 
 def check_and_upload_minio(uploaded_file: UploadFile):
     normalized_filename = normalize_filename(uploaded_file.filename)
@@ -92,8 +117,11 @@ def process_embedded_images(doc, page, pdf_file_name, page_index):
 def process_image(image_array, pdf_file_name, page_index):
     if image_array is None:
         raise ValueError(f"Can not decode pdf image page: {page_index+1}")
+    
+    rotated_image = auto_rotate_image(image_array)
+    
     # Encode image -> JPEG
-    success, encoded_image = cv.imencode(".jpg", image_array, [int(cv.IMWRITE_JPEG_QUALITY), 95])
+    success, encoded_image = cv.imencode(".jpg", rotated_image, [int(cv.IMWRITE_JPEG_QUALITY), 95])
     if not success:
         raise ValueError(f"Can not encode pdf image page: {page_index+1}")
     jpeg_bytes = encoded_image.tobytes()
@@ -122,21 +150,14 @@ def process_pdf_and_store(pdf_bytes, pdf_file_name):
 
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     
-    for page_index, page in enumerate(doc):
-
-        rotation = page.rotation if page.rotation else 0
-        
+    for page_index, page in enumerate(doc):        
         # Render full page image
         full_page_image = render_full_page(page, dpi=500)
-        if rotation:
-            full_page_image = rotate_image_by_angle(full_page_image, rotation)
-        process_image(full_page_image, pdf_file_name, page_index)  
+        process_image(full_page_image, pdf_file_name, page_index)
         
         # Process embedded images
         for embedded_image in process_embedded_images(doc, page, pdf_file_name, page_index):
-            if rotation:
-                embedded_image = rotate_image_by_angle(embedded_image, rotation)
-            process_image(embedded_image, pdf_file_name, page_index)  
+            process_image(embedded_image, pdf_file_name, page_index)
     return {"status": "success", "message": "All pages processed and images stored."}
 
 pdf_cache = {}

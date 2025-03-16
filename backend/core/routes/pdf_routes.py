@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Depends
 from auth import get_current_user
 from pdf_processing import check_and_upload_minio, process_pdf_and_store, extract_all_pages_images_cached, normalize_filename
 from minio.error import S3Error
-from config import MINIO_BUCKET, QDRANT_COLLECTION, minio_client, vectordb_provider
+from format import MINIO_BUCKET, QDRANT_COLLECTION, minio_client, vectordb_provider
 from typing import Optional, List
 import base64
 import cv2 as cv
