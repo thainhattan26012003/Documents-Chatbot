@@ -3,6 +3,9 @@ minio/
 core/.env
 streamlit_app/.env
 streamlit_app/huggingface_cache
+streamlit_app/.dockerignore
 vietnamese-embedding/__pycache__
 vietnamese-embedding/huggingface_cache
+vietnamese-embedding/.dockerignore
 ocr/__pycache__
+ocr/.dockerignore

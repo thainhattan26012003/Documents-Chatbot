@@ -13,7 +13,7 @@ from service_config import MINIO_BUCKET, QDRANT_COLLECTION, minio_client, vector
 from fastapi import HTTPException, UploadFile
 
 
-text_splitter = RecursiveCharacterTextSplitter(chunk_size=512, chunk_overlap=64)
+text_splitter = RecursiveCharacterTextSplitter(chunk_size=512, chunk_overlap=128)
 EXTRACT_TEXTS_URL_PYTESSERACT = "http://pytesseract:8081/extract_texts"
 
 def normalize_filename(filename: str) -> str:
@@ -70,7 +70,7 @@ def process_image(image_array, pdf_file_name, page_index):
 def process_pdf_and_store(pdf_bytes, pdf_file_name):
 
     try:
-        images = convert_from_bytes(pdf_bytes, dpi=300)
+        images = convert_from_bytes(pdf_bytes, dpi=500)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error converting PDF to images: {e}")
     
