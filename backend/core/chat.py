@@ -1,6 +1,6 @@
 import openai
 from pydantic import BaseModel
-from config import QDRANT_COLLECTION, vectordb_provider
+from service_config import QDRANT_COLLECTION, vectordb_provider
 from vector_db import embed
 
 

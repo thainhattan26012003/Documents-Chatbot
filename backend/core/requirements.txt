@@ -9,12 +9,10 @@ openai==0.28
 python-multipart 
 python-dotenv   
 opencv-python-headless
-PyMuPDF==1.19.0
 opencv-python
-pdfplumber
-# pytesseract
 minio
 psycopg2-binary
 bcrypt
 motor 
 python-jose[cryptography]
+pdf2image

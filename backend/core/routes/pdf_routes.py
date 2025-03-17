@@ -1,11 +1,13 @@
 from fastapi import APIRouter, HTTPException, UploadFile, File, Depends
 from auth import get_current_user
-from pdf_processing import check_and_upload_minio, process_pdf_and_store, extract_all_pages_images_cached, normalize_filename
+from pdf_processing import check_and_upload_minio, process_pdf_and_store, normalize_filename
 from minio.error import S3Error
-from config import MINIO_BUCKET, QDRANT_COLLECTION, minio_client, vectordb_provider
-from typing import Optional, List
+from service_config import MINIO_BUCKET, QDRANT_COLLECTION, minio_client, vectordb_provider
+from typing import List
 import base64
 import cv2 as cv
+import numpy as np 
+from pdf2image import convert_from_bytes
 
 router = APIRouter()
 
@@ -48,26 +50,25 @@ def list_pdfs(current_user=Depends(get_current_user)):
 
 
 @router.get("/pdf/view/{filename}")
-def view_pdf(filename: str, page: Optional[int] = None, dpi: int = 150, user=Depends(get_current_user)):
+def view_pdf(filename: str, page: int = 0, dpi: int = 300, user=Depends(get_current_user)):
     try:
         response = minio_client.get_object(MINIO_BUCKET, filename)
         file_bytes = response.read()
-        images = extract_all_pages_images_cached(file_bytes, dpi=dpi)
+        # convert pdf page to image
+        images = convert_from_bytes(file_bytes, dpi=dpi)
+        total_pages = len(images)
+        if page < 0 or page >= total_pages:
+            raise HTTPException(status_code=400, detail=f"Invalid page number. Total pages: {total_pages}")
+        # Choosen page
+        pil_image = images[page]
+
+        image_array = cv.cvtColor(np.array(pil_image), cv.COLOR_RGB2BGR)
+        success, buffer = cv.imencode('.jpg', image_array)
         
-        # Lazy loading
-        if page is not None:
-            if page < 0 or page >= len(images):
-                raise HTTPException(status_code=400, detail="Invalid page number")
-            images = [images[page]]
+        if not success:
+            raise HTTPException(status_code=500, detail="Error encoding image.")
+        img_base64 = base64.b64encode(buffer).decode('utf-8')
         
-        images_base64 = []
-        for img in images:
-            success, buffer = cv.imencode('.jpg', img)
-            if not success:
-                continue
-            img_base64 = base64.b64encode(buffer).decode('utf-8')
-            images_base64.append(img_base64)
-            
-        return {"filename": filename, "images": images_base64}
+        return {"filename": filename, "page": page, "total_pages": total_pages, "image": img_base64}
     except Exception as e:
-        raise HTTPException(status_code=404, detail=f"File not found: {filename}")
+        raise HTTPException(status_code=404, detail=f"File not found or error processing PDF: {e}")

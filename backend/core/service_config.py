@@ -23,16 +23,6 @@ minio_client = Minio(
 
 if not minio_client.bucket_exists(MINIO_BUCKET):
     minio_client.make_bucket(MINIO_BUCKET)
-    
-image_minio_client = Minio(
-    os.getenv("MINIO_ENDPOINT"),
-    access_key=os.getenv("MINIO_ACCESS_KEY"),
-    secret_key=os.getenv("MINIO_SECRET_KEY"),
-    secure=False,
-)
-
-if not image_minio_client.bucket_exists(IMAGE_MINIO_BUCKET):
-    image_minio_client.make_bucket(IMAGE_MINIO_BUCKET)
 
 vectordb_provider = QdrantProvider()
 vectordb_provider.create_collection(QDRANT_COLLECTION)
