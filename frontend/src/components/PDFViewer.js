@@ -1,13 +1,18 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 
 const PDFViewer = () => {
   const [pdfList, setPdfList] = useState([]);
   const [selectedFile, setSelectedFile] = useState(null);
   const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(null);
   const [image, setImage] = useState(null);
   const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
   const token = localStorage.getItem('token');
-  const dpi = 200;
+  const dpi = 300;
+
+  // Sử dụng useRef để lưu cache các trang đã tải
+  const imageCache = useRef({});
 
   // Fetch danh sách PDF từ backend
   useEffect(() => {
@@ -15,16 +20,15 @@ const PDFViewer = () => {
       setError("Missing token. Please login.");
       return;
     }
-    fetch('http://localhost:912/api/pdf/pdf', {
-      headers: { 'Authorization': `Bearer ${token}` },
-    })
-      .then((res) => {
+    const fetchPdfList = async () => {
+      try {
+        const res = await fetch('http://localhost:912/api/pdf/pdf', {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
         if (!res.ok) {
           throw new Error(`Error ${res.status}: ${res.statusText}`);
         }
-        return res.json();
-      })
-      .then((data) => {
+        const data = await res.json();
         if (data && Array.isArray(data.files)) {
           setPdfList(data.files);
           if (data.files.length > 0) {
@@ -33,41 +37,105 @@ const PDFViewer = () => {
         } else {
           setPdfList([]);
         }
-      })
-      .catch((err) => {
+      } catch (err) {
         console.error("Fetch PDF list error:", err);
         setError(err.message);
-      });
+      }
+    };
+    fetchPdfList();
   }, [token]);
 
-  // Reset trang khi file thay đổi
+  // Reset trang và totalPages khi file thay đổi
   useEffect(() => {
     setCurrentPage(0);
+    setTotalPages(null);
+    setError(null);
+    setImage(null);
   }, [selectedFile]);
 
-  // Lazy loading: fetch trang hiện tại
+  // Fetch trang hiện tại với caching, sử dụng async/await và AbortController
   useEffect(() => {
     if (!selectedFile || !token) return;
-    fetch(`http://localhost:912/api/pdf/pdf/view/${selectedFile}?page=${currentPage}&dpi=${dpi}`, {
-      headers: { 'Authorization': `Bearer ${token}` },
-    })
-      .then((res) => {
+
+    const cacheKey = `${selectedFile}-${currentPage}-${dpi}`;
+    // Nếu trang đã có trong cache, dùng luôn
+    if (imageCache.current[cacheKey]) {
+      setImage(imageCache.current[cacheKey].image);
+      setTotalPages(imageCache.current[cacheKey].totalPages);
+      return;
+    }
+
+    const controller = new AbortController();
+
+    const fetchPage = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(
+          `http://localhost:912/api/pdf/pdf/view/${selectedFile}?page=${currentPage}&dpi=${dpi}`,
+          {
+            headers: { 'Authorization': `Bearer ${token}` },
+            signal: controller.signal,
+          }
+        );
         if (!res.ok) {
           throw new Error(`Error ${res.status}: ${res.statusText}`);
         }
-        return res.json();
-      })
-      .then((data) => {
-        if (data && Array.isArray(data.images) && data.images.length > 0) {
-          setImage(data.images[0]);
+        const data = await res.json();
+        if (data && data.image) {
+          setImage(data.image);
+          setTotalPages(data.total_pages);
+          setError(null);
+          // Lưu cache cho trang hiện tại
+          imageCache.current[cacheKey] = {
+            image: data.image,
+            totalPages: data.total_pages,
+          };
+
+          // Prefetch trang kế tiếp nếu có
+          if (data.total_pages && currentPage < data.total_pages - 1) {
+            const nextCacheKey = `${selectedFile}-${currentPage + 1}-${dpi}`;
+            if (!imageCache.current[nextCacheKey]) {
+              fetch(
+                `http://localhost:912/api/pdf/pdf/view/${selectedFile}?page=${currentPage + 1}&dpi=${dpi}`,
+                {
+                  headers: { 'Authorization': `Bearer ${token}` },
+                }
+              )
+                .then(r => {
+                  if (!r.ok) throw new Error(`Error ${r.status}`);
+                  return r.json();
+                })
+                .then(d => {
+                  if (d && d.image) {
+                    imageCache.current[nextCacheKey] = {
+                      image: d.image,
+                      totalPages: d.total_pages,
+                    };
+                  }
+                })
+                .catch(err => {
+                  console.error("Prefetch error:", err);
+                });
+            }
+          }
         } else {
           setImage(null);
         }
-      })
-      .catch((err) => {
-        console.error("Fetch PDF page error:", err);
-        setError(err.message);
-      });
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.error("Fetch PDF page error:", err);
+          setError(err.message);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPage();
+
+    return () => {
+      controller.abort();
+    };
   }, [selectedFile, currentPage, token, dpi]);
 
   const handlePrevious = () => {
@@ -77,7 +145,9 @@ const PDFViewer = () => {
   };
 
   const handleNext = () => {
-    setCurrentPage(prev => prev + 1);
+    if (totalPages !== null && currentPage < totalPages - 1) {
+      setCurrentPage(prev => prev + 1);
+    }
   };
 
   return (
@@ -103,12 +173,22 @@ const PDFViewer = () => {
               <button onClick={handlePrevious} disabled={currentPage === 0}>
                 Previous
               </button>
-              <span>Page {currentPage + 1}</span>
-              <button onClick={handleNext}>Next</button>
+              <span>
+                Page {currentPage + 1}
+                {totalPages ? ` of ${totalPages}` : ''}
+              </span>
+              <button
+                onClick={handleNext}
+                disabled={totalPages !== null ? currentPage >= totalPages - 1 : false}
+              >
+                Next
+              </button>
             </div>
           </div>
           <div style={styles.imageContainer}>
-            {image ? (
+            {loading ? (
+              <p>Loading page...</p>
+            ) : image ? (
               <img
                 src={`data:image/jpeg;base64,${image}`}
                 alt={`Page ${currentPage + 1}`}

@@ -12,20 +12,22 @@ const Home = () => {
       </header>
       <div style={styles.content}>
         <div style={styles.leftPanel}>
-          {role === 'manager' && (
-            <div style={styles.section}>
-              <h2 style={styles.sectionTitle}>Upload PDF</h2>
-              <PDFUploader />
-            </div>
-          )}
           <div style={styles.section}>
             <h2 style={styles.sectionTitle}>PDF Viewer</h2>
             <PDFViewer />
           </div>
         </div>
         <div style={styles.rightPanel}>
-          <h2 style={styles.sectionTitle}>Chatbot Hỏi Đáp</h2>
-          <Chatbot />
+          {role === 'manager' && (
+            <div style={styles.pdfSection}>
+              <h2 style={styles.sectionTitle}>Upload PDF</h2>
+              <PDFUploader />
+            </div>
+          )}
+          <div style={styles.chatSection}>
+            <h2 style={styles.sectionTitle}>Chatbot Hỏi Đáp</h2>
+            <Chatbot />
+          </div>
         </div>
       </div>
     </div>
@@ -63,7 +65,9 @@ const styles = {
   rightPanel: {
     flex: 1,
     padding: '20px',
-    overflowY: 'auto',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
   },
   section: {
     marginBottom: '30px',
@@ -72,6 +76,13 @@ const styles = {
     fontSize: '20px',
     marginBottom: '15px',
     color: '#333',
+  },
+  pdfSection: {
+    marginBottom: '30px',
+  },
+  chatSection: {
+    flex: 1,
+    overflowY: 'auto',
   },
 };
 
