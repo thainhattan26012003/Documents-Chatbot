@@ -17,3 +17,4 @@ motor
 python-jose[cryptography]
 pdf2image
 google-generativeai
+google-cloud-vision

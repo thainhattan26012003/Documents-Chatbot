@@ -10,9 +10,8 @@ JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 120
 
-MINIO_BUCKET = QDRANT_COLLECTION = "law"
-
-IMAGE_MINIO_BUCKET = "images"
+MINIO_BUCKET = "documents"
+QDRANT_COLLECTION = "gg_vision_ocr"
 
 minio_client = Minio(
     os.getenv("MINIO_ENDPOINT"),

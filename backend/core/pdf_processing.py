@@ -5,16 +5,18 @@ import cv2 as cv
 import numpy as np
 from io import BytesIO
 import requests
-from fastapi import HTTPException
 from minio.error import S3Error
 from pdf2image import convert_from_bytes
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from service_config import MINIO_BUCKET, QDRANT_COLLECTION, minio_client, vectordb_provider
 from fastapi import HTTPException, UploadFile
+from google.cloud import vision
 
 
 text_splitter = RecursiveCharacterTextSplitter(chunk_size=512, chunk_overlap=128)
 EXTRACT_TEXTS_URL_PYTESSERACT = "http://pytesseract:8081/extract_texts"
+
+vision_client = vision.ImageAnnotatorClient()
 
 def normalize_filename(filename: str) -> str:
     base = os.path.basename(filename)
@@ -50,7 +52,7 @@ def check_and_upload_minio(uploaded_file: UploadFile):
         else:
             raise HTTPException(status_code=500, detail=f"File upload error: {err}")
 
-def process_image(image_array, pdf_file_name, page_index):
+def process_image_pytesseract(image_array, pdf_file_name, page_index):
     if image_array is None:
         raise ValueError(f"Can not decode pdf image page: {page_index+1}")
     
@@ -66,6 +68,27 @@ def process_image(image_array, pdf_file_name, page_index):
         ocr_text = response.json().get("data")
         split_text = text_splitter.split_text(ocr_text)
         vectordb_provider.add_vectors_(QDRANT_COLLECTION, split_text, pdf_file_name)
+        
+def process_image_gg_vision(image_array, pdf_file_name, page_index):
+    if image_array is None:
+        raise ValueError(f"Cannot decode PDF image page: {page_index+1}")
+
+    success, encoded_image = cv.imencode(".jpg", image_array, [int(cv.IMWRITE_JPEG_QUALITY), 95])
+    if not success:
+        raise ValueError(f"Cannot encode PDF image page: {page_index+1}")
+    jpeg_bytes = encoded_image.tobytes()
+
+    # Google Vision OCR 
+    image = vision.Image(content=jpeg_bytes)
+    response = vision_client.text_detection(image=image)
+    if response.error.message:
+        raise Exception(f"Google Vision OCR error: {response.error.message}")
+
+    texts = response.text_annotations
+    ocr_text = texts[0].description if texts else ""
+    
+    split_text = text_splitter.split_text(ocr_text)
+    vectordb_provider.add_vectors_(QDRANT_COLLECTION, split_text, pdf_file_name)
 
 def process_pdf_and_store(pdf_bytes, pdf_file_name):
 
@@ -76,5 +99,8 @@ def process_pdf_and_store(pdf_bytes, pdf_file_name):
     
     for page_index, pil_image in enumerate(images):
         image_array = cv.cvtColor(np.array(pil_image), cv.COLOR_RGB2BGR)
-        process_image(image_array, pdf_file_name, page_index)
+        process_image_gg_vision(image_array, pdf_file_name, page_index)
     return {"status": "success", "message": "All pages processed and images stored."}
+
+
+

@@ -80,6 +80,16 @@ services:
     networks:
       - mynetwork
 
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    volumes:
+      - mongodata:/data/db
+    ports:
+      - "27017:27017"
+    networks:
+      - mynetwork
+
   backend:
     build:
       context: ./core
@@ -90,23 +100,17 @@ services:
       - mongodb
       - minio
       - pytesseract
+      - vietnamese-embed
+    volumes:
+      - ./credentials.json:/app/credentials.json:ro
     environment:
       - MONGO_URL=mongodb://mongodb:27017
       - MINIO_ENDPOINT=minio:9000
       - MINIO_ACCESS_KEY=admin1234
       - MINIO_SECRET_KEY=admin1234
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials.json
     ports:
       - "912:912"
-    networks:
-      - mynetwork
-
-  mongodb:
-    image: mongo:latest
-    container_name: mongodb
-    volumes:
-      - mongodata:/data/db
-    ports:
-      - "27017:27017"
     networks:
       - mynetwork
 

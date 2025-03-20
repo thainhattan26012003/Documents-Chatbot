@@ -9,3 +9,5 @@ vietnamese-embedding/huggingface_cache
 vietnamese-embedding/.dockerignore
 ocr/__pycache__
 ocr/.dockerignore
+credentials.json
+.dockerignore

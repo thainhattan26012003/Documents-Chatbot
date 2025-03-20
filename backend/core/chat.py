@@ -39,7 +39,9 @@ def generate_answer_from_llm(query: str, context: str) -> str:
     - Nếu không có thông tin trong ngữ cảnh, trả lời: `"Tôi không rõ thông tin này."`
     
     **Câu hỏi:** {query}
+    \n
     **Ngữ cảnh:** {context}
+    \n
     
     **Câu trả lời:**
     """
@@ -49,7 +51,7 @@ def generate_answer_from_llm(query: str, context: str) -> str:
             {"role": "system", "content": "Bạn là một trợ lý AI có nhiệm vụ trả lời bằng tiếng Việt theo format Markdown."},
             {"role": "user", "content": prompt}
         ],
-        max_tokens=350
+        max_tokens=500
     )
     return response["choices"][0]["message"]["content"].strip() if response["choices"] else "No valid answer generated."
 
